@@ -1,0 +1,7 @@
+*.py[cod]
+*$py.class
+.Python
+.eggs/
+.idea
+output
+__pycache__/

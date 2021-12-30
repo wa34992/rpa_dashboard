@@ -16,6 +16,7 @@ class DashBoard:
         self.browser.set_download_directory(OUTPUT)
         self.browser.open_available_browser(URL, maximized=True)
         self.urls = []
+        self.agency_data = {}
 
     def dive_in_agencies(self):
 
@@ -32,21 +33,18 @@ class DashBoard:
         self.browser.wait_until_page_contains('DIVE IN')
         self.browser.find_element('//a[@aria-controls="home-dive-in"]').click()
         self.browser.wait_until_page_contains_element("//div[@id='agency-tiles-container']")
-        agency_list = self.browser.find_elements('//span[@class="h4 w200"]')
-        amount_list = self.browser.find_elements('//span[@class=" h1 w900"]')
+        while True:
+            agency_list = self.browser.find_elements('//span[@class="h4 w200"]')
+            amount_list = self.browser.find_elements('//span[@class=" h1 w900"]')
+            if len(agency_list) > 20:
+                break
 
         for agency in agency_list:
             if agency.text != "":
                 agencies.append(agency.text)
         for amount in amount_list:
             amounts.append(amount.text)
-
-        excel_data = {'Agencies': agencies, 'Amounts': amounts}
-        self.files.create_workbook(os.path.join(os.getcwd(), 'output/data.xlsx'))
-        self.files.append_rows_to_worksheet(content=excel_data, header=True)
-        self.files.rename_worksheet("Sheet", "Agencies")
-        self.files.save_workbook()
-        self.files.close_workbook()
+        self.agency_data = {'Agencies': agencies, 'Amounts': amounts}
 
     def agency_table_scrape(self, agency_name):
         """
@@ -66,8 +64,7 @@ class DashBoard:
         cio_rating_list = []
         no_of_projects_list = []
         pdf_matched = []
-        self.browser.wait_until_page_contains_element(f'//img[@alt="Seal of the {agency_name}"]')
-        self.browser.find_element(f'//img[@alt="Seal of the {agency_name}"]').click()
+        self.browser.find_element(f'//span[contains(text(),"{agency_name}")]').click()
         self.browser.wait_until_page_contains_element('//table[@id="investments-table-object"]', timeout=timedelta(seconds=20))
         self.browser.select_from_list_by_value('//div[@class="dataTables_length"]//label//select', "-1")
         row_range = self.browser.find_element('//div[@id="investments-table-object_info"]').text
@@ -107,10 +104,13 @@ class DashBoard:
                       '# of Projects': no_of_projects_list, "pdf matched": pdf_matched
                       }
 
-        self.files.open_workbook('output/data.xlsx')
+        self.files.create_workbook(f'{OUTPUT}/data.xlsx')
+        self.files.rename_worksheet("Sheet", "Agencies")
+        self.files.append_rows_to_worksheet(self.agency_data, "Agencies", header=True)
         self.files.create_worksheet('Individual Investment')
         self.files.append_rows_to_worksheet(content=table_data, header=True)
         self.files.save_workbook()
+        self.files.close_workbook()
 
     def pdf_download(self, url, uii):
         """
